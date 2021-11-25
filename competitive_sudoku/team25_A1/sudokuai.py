@@ -62,6 +62,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         all_moves = [Move(i, j, value) for i in range(N) for j in range(N) for value in range(1, N+1) if possible(i, j, value)]
         move = random.choice(all_moves)
         self.propose_move(move)
+        print("evaluate:")
         print(self.evaluation_function(game_state, move))
         while True:
             time.sleep(0.2)
