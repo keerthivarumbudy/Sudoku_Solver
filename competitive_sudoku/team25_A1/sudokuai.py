@@ -16,6 +16,38 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
     def __init__(self):
         super().__init__()
 
+
+    def find_legal_moves(self, game_state: GameState) -> [Move]:
+        N = game_state.board.N
+        legal_moves = []
+        for i in range(N):
+            for j in range(N):
+                if game_state.board.get(i, j) == SudokuBoard.empty:
+                    for value in range(1, N+1):
+                        if not TabooMove(i, j, value) in game_state.taboo_moves and self.is_legal(game_state, i, j, value):
+                            legal_moves.append(Move(i, j, value))
+
+        return legal_moves
+
+    def is_legal(self, game_state: GameState, i: int, j: int, value:int):
+        N = game_state.board.N
+        m = game_state.board.m
+        n = game_state.board.n
+        for k in range(N):
+            if game_state.board.get(k, j) == value:
+                return False
+            if game_state.board.get(i, k) == value:
+                return False
+
+        block_row = i // m
+        block_column = j // n
+        for k in range(block_row*m, block_row*m + m):
+            for o in range(block_column*n, block_column*n + n):
+                if game_state.board.get(k, o) == value:
+                    return False
+        return True
+
+
     def evaluation_function(self, game_state, move):
         score_dict = {
             0 : 0,
@@ -52,9 +84,17 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         score = score_dict[count]
         return score
 
+
+    def minimax(self):
+        return
+
+
     # N.B. This is a very naive implementation.
     def compute_best_move(self, game_state: GameState) -> None:
         N = game_state.board.N
+        legal_moves = self.find_legal_moves(game_state)
+        for move in legal_moves:
+            print(move.i, move.j, move.value)
 
         def possible(i, j, value):
             return game_state.board.get(i, j) == SudokuBoard.empty and not TabooMove(i, j, value) in game_state.taboo_moves
@@ -69,8 +109,6 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
             self.propose_move(random.choice(all_moves))
 
 
-    def minimax(self):
-        return
 
 
 
