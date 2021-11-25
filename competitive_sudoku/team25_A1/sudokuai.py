@@ -68,4 +68,8 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
             self.propose_move(random.choice(all_moves))
 
 
+    def minmax(self):
+        return
+
+
 
