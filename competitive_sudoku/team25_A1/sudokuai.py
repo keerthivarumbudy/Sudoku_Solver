@@ -6,6 +6,18 @@ import random
 import time
 from competitive_sudoku.sudoku import GameState, Move, SudokuBoard, TabooMove
 import competitive_sudoku.sudokuai
+import copy
+
+
+class Node:
+    def __init__(self, move, score):
+        self.children = None
+        self.move = move
+        self.score = score
+
+    def set_children(self, children):
+        # not sure if this is needed, but can be used to trace it back I guess
+        self.children = children
 
 
 class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
@@ -15,8 +27,6 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
 
     def __init__(self):
         super().__init__()
-
-    # class minimax:
 
     def find_legal_moves(self, game_state: GameState) -> [Move]:
         N = game_state.board.N
@@ -61,13 +71,13 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         N = board.N
         count = 0
         for i in range(0, N):
-            if board.get(i, move.j) == SudokuBoard.empty and i!=move.i:
+            if board.get(i, move.j) == SudokuBoard.empty and i != move.i:
                 break
         else:
             count += 1
 
         for j in range(0, N):
-            if board.get(move.i, j) == SudokuBoard.empty and j!=move.j:
+            if board.get(move.i, j) == SudokuBoard.empty and j != move.j:
                 break
         else:
             count += 1
@@ -77,7 +87,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         for k in range(block_range[0] * m, block_range[0] * m + m):
             counter = 0
             for o in range(block_range[1] * n, block_range[1] * n + n):
-                if board.get(k, o) == SudokuBoard.empty and (k,o) != (move.i,move.j) :
+                if board.get(k, o) == SudokuBoard.empty and (k, o) != (move.i, move.j):
                     counter = 1
                     break
             if counter == 1:
@@ -88,21 +98,72 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         score = score_dict[count]
         return score
 
-    # N.B. This is a very naive implementation.
-    def compute_best_move(self, game_state: GameState) -> None:
-        N = game_state.board.N
-        legal_moves = self.find_legal_moves(game_state)
-        for move in legal_moves:
-            print(move.i, move.j, move.value)
+    def get_min_max(self, depth, children):
+        # depending on which player's turn it is, selects and returns min or max score of the set of moves
+        if depth % 2 != 0:
+            maximum = Node(None, -1)
+            for i in children:
+                if i.score > maximum.score:
+                    maximum = i
+            print("max=", maximum.score, " in depth=", depth)
+            return maximum
+        else:
+            minimum = Node(None, 8)
+            for i in children:
+                if i.score < minimum.score:
+                    minimum = i
+            print("min=", minimum.score, " in depth=", depth)
+            return minimum
 
+    def minimax(self, branch, game_state, max_depth, current_depth):
+        legal_moves = self.find_legal_moves(game_state)
+        children = []
         def possible(i, j, value):
             return game_state.board.get(i, j) == SudokuBoard.empty and not TabooMove(i, j,
                                                                                      value) in game_state.taboo_moves
 
         all_moves = [move for move in legal_moves if possible(move.i, move.j, move.value)]
-        move = random.choice(all_moves)
+        # print("current depth = ", current_depth, "max_depth = ", max_depth)
+        # for move in all_moves:
+        #     print(move.i, move.j, move.value)
+
+        if current_depth == max_depth - 1:
+            # ends the recursion when max-depth is reached, picks the min or max to return based on turn
+            for move in all_moves:
+                score = self.evaluate_move(game_state.board, move)
+                node = Node(move, score + branch.score)
+                children.append(node)
+            branch = self.get_min_max(current_depth, children)
+            print(branch.score)
+            return branch
+
+        if len(all_moves) == 1:
+            # ends recursion when last node is reached
+            return Node(all_moves[0], self.evaluate_move(game_state.board, all_moves[0]))
+
+        current_depth += 1
+
+        for move in all_moves:
+            # assigns score to each mode, changes copy of the board based on the move, runs recursion to create and
+            # traverse the tree
+            score = self.evaluate_move(game_state.board, move)
+            node = Node(move, score + branch.score)
+            game_state_copy = copy.deepcopy(game_state)
+            game_state_copy.board.squares[move.i * move.j]
+            children.append(self.minimax(node, game_state_copy, max_depth, current_depth))
+
+        branch = self.get_min_max(current_depth, children)
+        branch.set_children(children)
+        print(branch.score)
+        return branch
+
+    def compute_best_move(self, game_state: GameState) -> None:
+        depth = 1
+        move = self.minimax(Node(None, 0), game_state, depth, 0).move
         self.propose_move(move)
-        print(self.evaluate_move(game_state.board, move), "= score")
+
         while True:
             time.sleep(0.2)
+            depth += 1
+            move = self.minimax(Node(None, 0), game_state, depth, 0).move
             self.propose_move(move)
