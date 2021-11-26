@@ -48,25 +48,25 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         return True
 
 
-    def evaluation_function(self, game_state, move):
+    def evaluation_function(self, board, move):
         score_dict = {
             0 : 0,
             1 : 1,
             2 : 3,
             3 : 7
         }
-        m = game_state.board.m
-        n = game_state.board.n
-        N = game_state.board.N
+        m = board.m
+        n = board.n
+        N = board.N
         count = 0
         for i in range(0, N):
-           if game_state.board.get(i,move.j)== SudokuBoard.empty:
+           if board.get(i,move.j)== SudokuBoard.empty:
                 break
         else:
             count += 1
 
         for j in range(0, N):
-           if game_state.board.get(move.i,j)== SudokuBoard.empty:
+           if board.get(move.i,j)== SudokuBoard.empty:
                 break
         else:
             count += 1
@@ -75,7 +75,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
 
         for k in range(block_range[0]*m, block_range[0]*m + m):
             for o in range(block_range[1]*n, block_range[1]*n + n):
-                if game_state.board.get(k, o) == SudokuBoard.empty:
+                if board.get(k, o) == SudokuBoard.empty:
                    break
         else:
             count += 1
@@ -103,7 +103,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         move = random.choice(all_moves)
         self.propose_move(move)
         print("evaluate:")
-        print(self.evaluation_function(game_state, move))
+        print(self.evaluation_function(game_state.board, move))
         while True:
             time.sleep(0.2)
             self.propose_move(random.choice(all_moves))
