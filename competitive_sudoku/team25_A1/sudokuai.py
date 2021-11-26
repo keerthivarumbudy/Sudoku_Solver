@@ -64,14 +64,12 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
             if board.get(i, move.j) == SudokuBoard.empty and i!=move.i:
                 break
         else:
-            print("first else")
             count += 1
 
         for j in range(0, N):
             if board.get(move.i, j) == SudokuBoard.empty and j!=move.j:
                 break
         else:
-            print("second else")
             count += 1
 
         block_range = [move.i // m, move.j // n]
@@ -79,16 +77,12 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         for k in range(block_range[0] * m, block_range[0] * m + m):
             counter = 0
             for o in range(block_range[1] * n, block_range[1] * n + n):
-                print("within block : ", k,o)
                 if board.get(k, o) == SudokuBoard.empty and (k,o) != (move.i,move.j) :
-                    print("breaking!")
                     counter = 1
                     break
             if counter == 1:
-                print("breaking!")
                 break
         else:
-            print("third else")
             count += 1
 
         score = score_dict[count]
