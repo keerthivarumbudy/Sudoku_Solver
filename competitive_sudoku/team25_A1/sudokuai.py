@@ -115,9 +115,11 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
             print("min=", minimum.score, " in depth=", depth)
             return minimum
 
-    def minimax(self, branch, game_state, max_depth, current_depth):
+    def minimax(self, parent, game_state, max_depth, current_depth):
         legal_moves = self.find_legal_moves(game_state)
-        children = []
+        final_branch = None
+        maximum = -1000
+        minimum = 1000
         def possible(i, j, value):
             return game_state.board.get(i, j) == SudokuBoard.empty and not TabooMove(i, j,
                                                                                      value) in game_state.taboo_moves
@@ -126,36 +128,33 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         # print("current depth = ", current_depth, "max_depth = ", max_depth)
         # for move in all_moves:
         #     print(move.i, move.j, move.value)
-
-        if current_depth == max_depth - 1:
+        if current_depth == max_depth:
             # ends the recursion when max-depth is reached, picks the min or max to return based on turn
-            for move in all_moves:
-                score = self.evaluate_move(game_state.board, move)
-                node = Node(move, score + branch.score)
-                children.append(node)
-            branch = self.get_min_max(current_depth, children)
-            print(branch.score)
-            return branch
+            return parent
 
-        if len(all_moves) == 1:
+        if len(all_moves) == 0:
             # ends recursion when last node is reached
-            return Node(all_moves[0], self.evaluate_move(game_state.board, all_moves[0]))
-
-        current_depth += 1
+            return parent
 
         for move in all_moves:
             # assigns score to each mode, changes copy of the board based on the move, runs recursion to create and
             # traverse the tree
             score = self.evaluate_move(game_state.board, move)
-            node = Node(move, score + branch.score)
             game_state_copy = copy.deepcopy(game_state)
-            game_state_copy.board.squares[move.i * move.j]
-            children.append(self.minimax(node, game_state_copy, max_depth, current_depth))
-
-        branch = self.get_min_max(current_depth, children)
-        branch.set_children(children)
-        print(branch.score)
-        return branch
+            game_state_copy.board.put(move.i,move.j,move.value)
+            if current_depth % 2 == 0:
+                node = Node(move, parent.score + score)
+                branch = self.minimax(node, game_state_copy, max_depth, current_depth + 1)
+                if branch.score > maximum:
+                    maximum = branch.score
+                    final_branch = branch
+            else:
+                node = Node(move, parent.score - score)
+                branch = self.minimax(node, game_state_copy, max_depth, current_depth + 1)
+                if branch.score < minimum:
+                    minimum = branch.score
+                    final_branch = branch
+        return final_branch
 
     def compute_best_move(self, game_state: GameState) -> None:
         depth = 1
@@ -163,7 +162,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         self.propose_move(move)
 
         while True:
-            time.sleep(0.2)
+            time.sleep(0.1)
             depth += 1
             move = self.minimax(Node(None, 0), game_state, depth, 0).move
             self.propose_move(move)
