@@ -51,6 +51,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                     return False
         return True
 
+    #   This compute how many points we get by a certain move in a certain board state:
     def compute_move_score(self, board, move):
         score_dict = {
             0: 0,
@@ -129,6 +130,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
             current_max = -math.inf   # default current_max = negative inf
             for move in moves:  # find a move maximize the min
                 # print("I am thinking the move:"+str(move)+"in depth:"+str(current_depth))
+                #   copy and update game_state for next depth of each move:
                 new_game_state = copy.deepcopy(game_state)
                 new_game_state.board.put(move.i, move.j, move.value)
                 new_game_state.scores[self.player_number - 1] += self.compute_move_score(game_state.board, move)
