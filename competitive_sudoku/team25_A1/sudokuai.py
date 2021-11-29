@@ -2,28 +2,20 @@
 #  Software License, (See accompanying file LICENSE or copy at
 #  https://www.gnu.org/licenses/gpl-3.0.txt)
 
-import random
-import time
-from competitive_sudoku.sudoku import GameState, Move, SudokuBoard, TabooMove
-import competitive_sudoku.sudokuai
 import copy
+import math
+import random
 
-
-class Node:
-    def __init__(self, move, score):
-        self.children = None
-        self.move = move
-        self.score = score
-
-    def set_children(self, children):
-        # not sure if this is needed, but can be used to trace it back I guess
-        self.children = children
+import competitive_sudoku.sudokuai
+from competitive_sudoku.sudoku import GameState, Move, SudokuBoard, TabooMove
 
 
 class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
     """
     Sudoku AI that computes a move for a given sudoku configuration.
     """
+    player_number = 1
+    opponent_number = 2
 
     def __init__(self):
         super().__init__()
@@ -59,16 +51,18 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                     return False
         return True
 
-    def evaluate_move(self, board, move):
+    def compute_move_score(self, board, move):
         score_dict = {
             0: 0,
             1: 1,
             2: 3,
             3: 7
         }
+
         m = board.m
         n = board.n
         N = board.N
+
         count = 0
         for i in range(0, N):
             if board.get(i, move.j) == SudokuBoard.empty and i != move.i:
@@ -98,72 +92,90 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         score = score_dict[count]
         return score
 
-    def get_min_max(self, depth, children):
-        # depending on which player's turn it is, selects and returns min or max score of the set of moves
-        if depth % 2 != 0:
-            maximum = Node(None, -1)
-            for i in children:
-                if i.score > maximum.score:
-                    maximum = i
-            print("max=", maximum.score, " in depth=", depth)
-            return maximum
-        else:
-            minimum = Node(None, 8)
-            for i in children:
-                if i.score < minimum.score:
-                    minimum = i
-            print("min=", minimum.score, " in depth=", depth)
-            return minimum
+    # eval is the difference in points between two players
+    def evaluation_function(self, game_state: GameState):
+        diff_score = game_state.scores[self.player_number - 1] - game_state.scores[self.opponent_number - 1]
+        eval_value = diff_score
+        # ----------------------------- maybe try a sophisticated method ------------------------------
+        #
+        #   ------ the code below just adds another depth, not really sophisticated ------
+        #
+        # moves = self.find_legal_moves(game_state)
+        # a = 1 if self.player_number - len(game_state.moves) % 2 == 1 else -1
+        # eval_value = diff_score - a * max([self.compute_move_score(game_state.board, i) for i in moves])
+        #
+        # -----------------------------------       End       -----------------------------------------
+        return eval_value
 
-    def minimax(self, branch, game_state, max_depth, current_depth):
-        legal_moves = self.find_legal_moves(game_state)
-        children = []
-        def possible(i, j, value):
-            return game_state.board.get(i, j) == SudokuBoard.empty and not TabooMove(i, j,
-                                                                                     value) in game_state.taboo_moves
+    # This function check if a board is completely filled
+    def is_board_full(self, game_state: GameState):
+        N = game_state.board.N
+        for i in range(N):
+            for j in range(N):
+                if game_state.board.get(i, j) == SudokuBoard.empty:
+                    return False
+        return True
 
-        all_moves = [move for move in legal_moves if possible(move.i, move.j, move.value)]
-        # print("current depth = ", current_depth, "max_depth = ", max_depth)
-        # for move in all_moves:
-        #     print(move.i, move.j, move.value)
+    def minimax_vanilla(self, game_state: GameState, max_depth, current_depth):
+        if current_depth == max_depth or self.is_board_full(game_state):
+            return self.evaluation_function(game_state)
 
-        if current_depth == max_depth - 1:
-            # ends the recursion when max-depth is reached, picks the min or max to return based on turn
-            for move in all_moves:
-                score = self.evaluate_move(game_state.board, move)
-                node = Node(move, score + branch.score)
-                children.append(node)
-            branch = self.get_min_max(current_depth, children)
-            print(branch.score)
-            return branch
+        moves = self.find_legal_moves(game_state)
 
-        if len(all_moves) == 1:
-            # ends recursion when last node is reached
-            return Node(all_moves[0], self.evaluate_move(game_state.board, all_moves[0]))
+        if (self.player_number - len(game_state.moves)) % 2 == 1:  # our turn
+            if len(moves) == 0:  # if AI_agent cannot find one legal move
+                return math.inf  # because there is a taboo in recursion
 
-        current_depth += 1
+            current_max = -math.inf   # default current_max = negative inf
+            for move in moves:  # find a move maximize the min
+                # print("I am thinking the move:"+str(move)+"in depth:"+str(current_depth))
+                new_game_state = copy.deepcopy(game_state)
+                new_game_state.board.put(move.i, move.j, move.value)
+                new_game_state.scores[self.player_number - 1] += self.compute_move_score(game_state.board, move)
+                new_game_state.moves.append(move)
+                eval_value = self.minimax_vanilla(new_game_state, max_depth, current_depth + 1)
+                # print("eval is:"+str(b))
+                #   compare the best current_max and the eval_value of current move:
+                if current_depth == 0 and eval_value > current_max:    # propose a current best move in depth=0
+                    # print("minimax get a move which get:"+str(b)+" points")
+                    self.propose_move(move)
+                current_max = max(current_max, eval_value)
+            return current_max
 
-        for move in all_moves:
-            # assigns score to each mode, changes copy of the board based on the move, runs recursion to create and
-            # traverse the tree
-            score = self.evaluate_move(game_state.board, move)
-            node = Node(move, score + branch.score)
-            game_state_copy = copy.deepcopy(game_state)
-            game_state_copy.board.squares[move.i * move.j]
-            children.append(self.minimax(node, game_state_copy, max_depth, current_depth))
+        else:   # opponent's turn
+            if len(moves) == 0:  # if AI_agent cannot find one legal move
+                return -math.inf  # because there is a taboo in recursion
 
-        branch = self.get_min_max(current_depth, children)
-        branch.set_children(children)
-        print(branch.score)
-        return branch
+            # print("now I think as opponent:")
+            current_min = math.inf    # default current_min = positive inf
+            for move in moves:  # find a move minimize the max
+                # print("if opponent take move:"+str(move)+" in depth:"+str(current_depth))
+                #   copy and update game_state for next depth of each move:
+                new_game_state = copy.deepcopy(game_state)
+                new_game_state.board.put(move.i, move.j, move.value)
+                new_game_state.scores[self.opponent_number - 1] += self.compute_move_score(game_state.board, move)
+                new_game_state.moves.append(move)
+                #   compare the current_min and the eval_value of current move:
+                current_min = min(current_min, self.minimax_vanilla(new_game_state, max_depth, current_depth + 1))
+                # print("my advantage so far is:"+str(a)+" points")
+            # print("I think after opponent moved, my advantage is:"+str(a)+" points")
+            return current_min
 
     def compute_best_move(self, game_state: GameState) -> None:
-        depth = 1
-        move = self.minimax(Node(None, 0), game_state, depth, 0).move
-        self.propose_move(move)
 
-        while True:
-            time.sleep(0.2)
-            depth += 1
-            move = self.minimax(Node(None, 0), game_state, depth, 0).move
-            self.propose_move(move)
+        # -------- First propose a random moves in case we run out of time --------
+        #
+        # moves = self.find_legal_moves(game_state)
+        # self.propose_move(random.choice(moves))
+        #
+        # ----------------------------    End     ---------------------------------
+
+        # To know the order of our AI_agent player and opponent player:
+        [self.player_number, self.opponent_number] = (1, 2) if len(game_state.moves) % 2 == 0 else (2, 1)
+        # print("our player_number is:" + str(self.player_number))
+
+        depth = 2   # set the max_depth for minimax()
+        # print("we set the max_depth:"+str(depth))
+
+        # run the minimax()
+        self.minimax_vanilla(game_state, depth, 0)
