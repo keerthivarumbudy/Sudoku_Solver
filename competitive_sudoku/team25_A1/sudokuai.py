@@ -117,7 +117,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                     return False
         return True
 
-    def minimax_alpha_beta(self, game_state: GameState, max_depth, current_depth, alpha, beta, initial_gamestate):
+    def minimax_alpha_beta(self, game_state: GameState, max_depth, current_depth, alpha, beta, real_diff_score):
         best_move = None
         if current_depth == max_depth or self.is_board_full(game_state):
             return self.evaluation_function(game_state)
@@ -126,7 +126,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
 
         if (self.player_number - len(game_state.moves)) % 2 == 1:  # our turn
             if len(moves) == 0:  # if AI_agent cannot find one legal move
-                return self.evaluation_function(initial_gamestate) # because there is a taboo in recursion
+                return real_diff_score # because there is a taboo in recursion
 
             current_max = -math.inf   # default current_max = negative inf
             for move in moves:  # find a move maximize the min
@@ -136,7 +136,8 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                 new_game_state.board.put(move.i, move.j, move.value)
                 new_game_state.scores[self.player_number - 1] += self.compute_move_score(game_state.board, move)
                 new_game_state.moves.append(move)
-                eval_value = self.minimax_alpha_beta(new_game_state, max_depth, current_depth + 1, alpha, beta, initial_gamestate)
+                eval_value = self.minimax_alpha_beta(new_game_state, max_depth, current_depth + 1,
+                                                     alpha, beta, real_diff_score)
                 # print("eval is:"+str(eval_value))
                 #   compare the best current_max and the eval_value of current move:
                 ## print("current_depth ", current_depth)
@@ -161,7 +162,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
 
         else:   # opponent's turn
             if len(moves) == 0:  # if AI_agent cannot find one legal move
-                return self.evaluation_function(initial_gamestate) # because there is a taboo in recursion
+                return real_diff_score  # because there is a taboo in recursion
 
             # print("now I think as opponent:")
             current_min = math.inf    # default current_min = positive inf
@@ -173,7 +174,8 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                 new_game_state.scores[self.opponent_number - 1] += self.compute_move_score(game_state.board, move)
                 new_game_state.moves.append(move)
                 #   compare the current_min and the eval_value of current move:
-                current_min = min(current_min, self.minimax_alpha_beta(new_game_state, max_depth, current_depth + 1,alpha, beta, initial_gamestate))
+                current_min = min(current_min, self.minimax_alpha_beta(new_game_state, max_depth, current_depth + 1,
+                                                                       alpha, beta, real_diff_score))
                 # print("my advantage so far is:"+str(current_min)+" points")
                 # print("I think after opponent moved, my advantage is:"+str(current_min)+" points")
                 if current_min <= alpha:
@@ -195,9 +197,9 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         [self.player_number, self.opponent_number] = (1, 2) if len(game_state.moves) % 2 == 0 else (2, 1)
         # print("our player_number is:" + str(self.player_number))
         depth = 1   # set the max_depth for minimax()
-        initial_gamestate = copy.deepcopy(game_state)
+        real_diff_score = self.evaluation_function(game_state)
         while True:
             # run the minimax()
             print("depth:"+str(depth))
-            self.minimax_alpha_beta(game_state, depth, 0, -math.inf, math.inf, initial_gamestate)
+            self.minimax_alpha_beta(game_state, depth, 0, -math.inf, math.inf, real_diff_score)
             depth += 1
