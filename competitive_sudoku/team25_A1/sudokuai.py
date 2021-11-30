@@ -118,9 +118,10 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         return True
 
     def minimax_alpha_beta(self, game_state: GameState, max_depth, current_depth, alpha, beta):
+        best_move = None
         if current_depth == max_depth or self.is_board_full(game_state):
             return self.evaluation_function(game_state)
-        print("current_depth ", current_depth)
+        #print("current_depth ", current_depth)
         moves = self.find_legal_moves(game_state)
 
         if (self.player_number - len(game_state.moves)) % 2 == 1:  # our turn
@@ -138,16 +139,17 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                 eval_value = self.minimax_alpha_beta(new_game_state, max_depth, current_depth + 1, alpha, beta)
                 # print("eval is:"+str(b))
                 #   compare the best current_max and the eval_value of current move:
-                print("current_depth ", current_depth)
+                #print("current_depth ", current_depth)
                 if current_depth == 0 and eval_value > current_max:    # propose a current best move in depth=0
-                    # print("minimax get a move which get:"+str(b)+" points")
-                    self.propose_move(move)
+                    best_move = move
 
                 current_max = max(current_max, eval_value)
                 if current_max >= beta:
                     return current_max
                 if current_max > alpha:
                     alpha = current_max
+            if current_depth == 0:
+                self.propose_move(best_move)
             return current_max
 
         else:   # opponent's turn
@@ -189,3 +191,4 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         while True:
             # run the minimax()
             self.minimax_alpha_beta(game_state, depth + 1, 0, -math.inf, math.inf)
+            print_depth += 1
