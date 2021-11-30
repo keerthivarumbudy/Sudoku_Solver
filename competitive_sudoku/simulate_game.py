@@ -14,6 +14,7 @@ from pathlib import Path
 from competitive_sudoku.execute import solve_sudoku
 from competitive_sudoku.sudoku import GameState, SudokuBoard, Move, TabooMove, load_sudoku_from_text
 from competitive_sudoku.sudokuai import SudokuAI
+import csv
 
 
 def check_oracle(solve_sudoku_path: str) -> None:
@@ -82,16 +83,16 @@ def simulate_game(initial_board: SudokuBoard, player1: SudokuAI, player2: Sudoku
             if best_move != Move(0, 0, 0):
                 if TabooMove(i, j, value) in game_state.taboo_moves:
                     print(f'Error: {best_move} is a taboo move. Player {2-player_number} wins the game.')
-                    return
+                    return f"Player {2-player_number}"
                 board_text = str(game_state.board)
                 options = f'--move "{game_state.board.rc2f(i, j)} {value}"'
                 output = solve_sudoku(solve_sudoku_path, board_text, options)
                 if 'Invalid move' in output:
                     print(f'Error: {best_move} is not a valid move. Player {3-player_number} wins the game.')
-                    return
+                    return f"Player {3-player_number}"
                 if 'Illegal move' in output:
                     print(f'Error: {best_move} is not a legal move. Player {3-player_number} wins the game.')
-                    return
+                    return f"Player {3-player_number}"
                 if 'has no solution' in output:
                     print(f'The sudoku has no solution after the move {best_move}.')
                     player_score = 0
@@ -108,16 +109,20 @@ def simulate_game(initial_board: SudokuBoard, player1: SudokuAI, player2: Sudoku
                         raise RuntimeError(f'Unexpected output of sudoku solver: "{output}".')
             else:
                 print(f'No move was supplied. Player {3-player_number} wins the game.')
-                return
+                return f"Player {3-player_number}"
             game_state.scores[player_number-1] = game_state.scores[player_number-1] + player_score
             print(f'Reward: {player_score}')
             print(game_state)
+
         if game_state.scores[0] > game_state.scores[1]:
             print('Player 1 wins the game.')
+            return "Player 1"
         elif game_state.scores[0] == game_state.scores[1]:
             print('The game ends in a draw.')
+            return "Draw"
         elif game_state.scores[0] < game_state.scores[1]:
             print('Player 2 wins the game.')
+            return "Player 2"
 
 
 def main():
@@ -154,7 +159,11 @@ def main():
     if args.second in ('random_player', 'greedy_player'):
         player2.solve_sudoku_path = solve_sudoku_path
 
-    simulate_game(board, player1, player2, solve_sudoku_path=solve_sudoku_path, calculation_time=args.time)
+    winner = simulate_game(board, player1, player2, solve_sudoku_path=solve_sudoku_path, calculation_time=args.time)
+
+    with open('results.csv', 'a', newline='') as csvfile:
+        data = csv.writer(csvfile, delimiter=',')
+        data.writerow([args.board, args.first, args.second, args.time, winner ])
 
 
 if __name__ == '__main__':
