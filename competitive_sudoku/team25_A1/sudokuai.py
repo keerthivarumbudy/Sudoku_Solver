@@ -194,11 +194,10 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         # To know the order of our AI_agent player and opponent player:
         [self.player_number, self.opponent_number] = (1, 2) if len(game_state.moves) % 2 == 0 else (2, 1)
         # print("our player_number is:" + str(self.player_number))
-        depth = 0   # set the max_depth for minimax()
+        depth = 1   # set the max_depth for minimax()
         initial_gamestate = copy.deepcopy(game_state)
-        self.minimax_alpha_beta(game_state, depth + 1, 0, -math.inf, math.inf, initial_gamestate)
         while True:
             # run the minimax()
-            depth += 1
             print("depth:"+str(depth))
-            self.minimax_alpha_beta(game_state, depth + 1, 0, -math.inf, math.inf, initial_gamestate)
+            self.minimax_alpha_beta(game_state, depth, 0, -math.inf, math.inf, initial_gamestate)
+            depth += 1
