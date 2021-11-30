@@ -142,6 +142,8 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                 #print("current_depth ", current_depth)
                 if current_depth == 0 and eval_value > current_max:    # propose a current best move in depth=0
                     best_move = move
+                    if max_depth == 1:
+                        self.propose_move(move)
 
                 current_max = max(current_max, eval_value)
                 if current_max >= beta:
@@ -187,8 +189,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         # To know the order of our AI_agent player and opponent player:
         [self.player_number, self.opponent_number] = (1, 2) if len(game_state.moves) % 2 == 0 else (2, 1)
         # print("our player_number is:" + str(self.player_number))
-        depth = 1   # set the max_depth for minimax()
+        depth = 0   # set the max_depth for minimax()
         while True:
             # run the minimax()
             self.minimax_alpha_beta(game_state, depth + 1, 0, -math.inf, math.inf)
-            print_depth += 1
