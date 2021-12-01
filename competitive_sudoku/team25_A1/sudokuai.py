@@ -51,8 +51,8 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                     return False
         return True
 
-    #   This compute how many points we get by a certain move in a certain board state:
     def compute_move_score(self, board, move):
+        # Function to compute the points we can get by making a certain move given a certain board state
         score_dict = {
             0: 0,
             1: 1,
@@ -93,23 +93,15 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         score = score_dict[count]
         return score
 
-    # eval is the difference in points between two players
+
     def evaluation_function(self, game_state: GameState):
+        # Function to calculate the difference of scores between the two players given a gamestate
         diff_score = game_state.scores[self.player_number - 1] - game_state.scores[self.opponent_number - 1]
         eval_value = diff_score
-        # ----------------------------- maybe try a sophisticated method ------------------------------
-        #
-        #   ------ the code below just adds another depth, not really sophisticated ------
-        #
-        # moves = self.find_legal_moves(game_state)
-        # a = 1 if self.player_number - len(game_state.moves) % 2 == 1 else -1
-        # eval_value = diff_score - a * max([self.compute_move_score(game_state.board, i) for i in moves])
-        #
-        # -----------------------------------       End       -----------------------------------------
         return eval_value
 
-    # This function check if a board is completely filled
     def is_board_full(self, game_state: GameState):
+        # Function to check if a board is completely filled
         N = game_state.board.N
         for i in range(N):
             for j in range(N):
@@ -118,19 +110,18 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         return True
 
     def minimax_alpha_beta(self, game_state: GameState, max_depth, current_depth, alpha, beta, real_diff_score):
+        # Function to execute minimax algorithm with alpha-beta pruning
         best_move = None
         if current_depth == max_depth or self.is_board_full(game_state):
             return self.evaluation_function(game_state)
-        ## print("current_depth ", current_depth)
         moves = self.find_legal_moves(game_state)
 
         if (self.player_number - len(game_state.moves)) % 2 == 1:  # our turn
             if len(moves) == 0:  # if AI_agent cannot find one legal move
-                return real_diff_score # because there is a taboo in recursion
+                return real_diff_score  # because there is a taboo in recursion
 
-            current_max = -math.inf   # default current_max = negative inf
-            for move in moves:  # find a move maximize the min
-                # print("I am thinking the move:"+str(move)+"in depth:"+str(current_depth))
+            current_max = -math.inf  # default current_max = negative inf
+            for move in moves:  # find a move to maximize the min
                 #   copy and update game_state for next depth of each move:
                 new_game_state = copy.deepcopy(game_state)
                 new_game_state.board.put(move.i, move.j, move.value)
@@ -138,36 +129,28 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                 new_game_state.moves.append(move)
                 eval_value = self.minimax_alpha_beta(new_game_state, max_depth, current_depth + 1,
                                                      alpha, beta, real_diff_score)
-                # print("eval is:"+str(eval_value))
-                #   compare the best current_max and the eval_value of current move:
-                ## print("current_depth ", current_depth)
-                if current_depth == 0 and eval_value > current_max:    # propose a current best move in depth=0
-                    # print("minimax get a move which get:" + str(eval_value) + " points")
+                #   compare the best current_max and the eval_value of current move
+                if current_depth == 0 and eval_value > current_max:  # propose a current best move in depth=0
                     best_move = move
-                    # print("current best move: ", best_move.i, best_move.j, best_move.value)
                     if max_depth == 1:
                         self.propose_move(move)
 
                 current_max = max(current_max, eval_value)
 
                 if current_max >= beta:
-                    # print("test")
                     return current_max
                 if current_max > alpha:
                     alpha = current_max
             if current_depth == 0:
-                # print("something")
                 self.propose_move(best_move)
             return current_max
 
-        else:   # opponent's turn
+        else:  # opponent's turn
             if len(moves) == 0:  # if AI_agent cannot find one legal move
                 return real_diff_score  # because there is a taboo in recursion
 
-            # print("now I think as opponent:")
-            current_min = math.inf    # default current_min = positive inf
+            current_min = math.inf  # default current_min = positive inf
             for move in moves:  # find a move minimize the max
-                # print("if opponent take move:"+str(move)+" in depth:"+str(current_depth))
                 #   copy and update game_state for next depth of each move:
                 new_game_state = copy.deepcopy(game_state)
                 new_game_state.board.put(move.i, move.j, move.value)
@@ -176,8 +159,6 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                 #   compare the current_min and the eval_value of current move:
                 current_min = min(current_min, self.minimax_alpha_beta(new_game_state, max_depth, current_depth + 1,
                                                                        alpha, beta, real_diff_score))
-                # print("my advantage so far is:"+str(current_min)+" points")
-                # print("I think after opponent moved, my advantage is:"+str(current_min)+" points")
                 if current_min <= alpha:
                     return current_min
                 if current_min < beta:
@@ -186,20 +167,11 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
 
     def compute_best_move(self, game_state: GameState) -> None:
 
-        # -------- First propose a random moves in case we run out of time --------
-        #
-        # moves = self.find_legal_moves(game_state)
-        # self.propose_move(random.choice(moves))
-        #
-        # ----------------------------    End     ---------------------------------
-
         # To know the order of our AI_agent player and opponent player:
         [self.player_number, self.opponent_number] = (1, 2) if len(game_state.moves) % 2 == 0 else (2, 1)
-        # print("our player_number is:" + str(self.player_number))
-        depth = 1   # set the max_depth for minimax()
+        depth = 1  # set the max_depth for minimax()
         real_diff_score = self.evaluation_function(game_state)
         while True:
             # run the minimax()
-            print("depth:"+str(depth))
             self.minimax_alpha_beta(game_state, depth, 0, -math.inf, math.inf, real_diff_score)
             depth += 1
