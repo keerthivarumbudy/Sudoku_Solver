@@ -81,7 +81,7 @@ def simulate_game(initial_board: SudokuBoard, player1: SudokuAI, player2: Sudoku
             player_score = 0
             if best_move != Move(0, 0, 0):
                 if TabooMove(i, j, value) in game_state.taboo_moves:
-                    print(f'Error: {best_move} is a taboo move. Player {2-player_number} wins the game.')
+                    print(f'Error: {best_move} is a taboo move. Player {3-player_number} wins the game.')
                     return
                 board_text = str(game_state.board)
                 options = f'--move "{game_state.board.rc2f(i, j)} {value}"'
