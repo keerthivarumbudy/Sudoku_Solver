@@ -2,7 +2,7 @@ import os
 import csv
 
 boards = ['boards/empty-3x3.txt', 'boards/random-3x3.txt']
-opponents = ['random_player', 'greedy_player']
+opponents = ['greedy_player']
 with open('results.csv', 'a', newline='') as csvfile:
     data = csv.writer(csvfile, delimiter=',')
     data.writerow(['Board', 'First Player', 'Second Player', 'Time', 'Winner'])
