@@ -16,8 +16,6 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
     """
     player_number = 1
     opponent_number = 2
-    moves_left = 0  # to identify early or late game
-    early_game = True
 
     def __init__(self):
         super().__init__()
@@ -32,7 +30,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                         if not TabooMove(i, j, value) in game_state.taboo_moves and self.is_legal(game_state, i, j,
                                                                                                   value):
                             legal_moves.append(Move(i, j, value))
-                            self.moves_left += 1
+
         return legal_moves
 
     def is_legal(self, game_state: GameState, i: int, j: int, value: int):
@@ -94,6 +92,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
 
         score = score_dict[count]
         return score
+
 
     def evaluation_function(self, game_state: GameState):
         # Function to calculate the difference of scores between the two players given a gamestate
@@ -174,9 +173,5 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         real_diff_score = self.evaluation_function(game_state)
         while True:
             # run the minimax()
-            if self.moves_left <= 0.25 * game_state.board.N * game_state.board.N:
-                self.early_game = False
             self.minimax_alpha_beta(game_state, depth, 0, -math.inf, math.inf, real_diff_score)
-            self.moves_left -= 2
-            print("move_left:"+str(self.moves_left))
             depth += 1
