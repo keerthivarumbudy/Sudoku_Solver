@@ -174,7 +174,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         real_diff_score = self.evaluation_function(game_state)
         while True:
             # run the minimax()
-            if self.moves_left <= 0.25 * self.game_state.board.N * self.game_state.board.N:
+            if self.moves_left <= 0.25 * game_state.board.N * game_state.board.N:
                 self.early_game = False
             self.minimax_alpha_beta(game_state, depth, 0, -math.inf, math.inf, real_diff_score)
             self.moves_left -= 2
