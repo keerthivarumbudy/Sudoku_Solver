@@ -276,6 +276,6 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
             if self.cells_empty <= 0.25 * game_state.board.N * game_state.board.N:
                 self.early_game = False
             self.minimax_alpha_beta(game_state, depth, 0, -math.inf, math.inf, real_diff_score, initial_legal_moves)
-            self.cells_empty -= 2
+            self.cells_empty -= 1
             # print("move_left:"+str(self.moves_left))
             depth += 1
