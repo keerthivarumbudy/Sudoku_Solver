@@ -16,8 +16,6 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
     """
     player_number = 1
     opponent_number = 2
-    cells_empty = 0  # to identify early or late game
-    early_game = True
     found_taboo = False
     exp_taboo = Move(0,0,0)
 
@@ -32,7 +30,6 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
             for j in range(N):
                 legal_moves.__getitem__(i).append(set())
                 if game_state.board.get(i, j) == SudokuBoard.empty:
-                    self.cells_empty += 1
                     for value in range(1, N + 1):
                         if not TabooMove(i, j, value) in game_state.taboo_moves and self.is_legal(game_state, i, j,
                                                                                                   value):
@@ -44,7 +41,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
 
         counter = 0
         while len(forced_moves) > len(old_forced_moves) and counter < 2:
-            print("New: ", len(forced_moves), "Old: ", len(old_forced_moves), "Diff: ", len(forced_moves) - len(old_forced_moves))
+            # print("New: ", len(forced_moves), "Old: ", len(old_forced_moves), "Diff: ", len(forced_moves) - len(old_forced_moves))
             for forced_move in forced_moves:
                 if forced_move not in old_forced_moves:
                     legal_moves = self.update_lm(game_state, legal_moves, forced_move)
@@ -226,7 +223,6 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                 #   compare the best current_max and the eval_value of current move
                 if current_depth == 0 and eval_value > current_max:  # propose a current best move in depth=0
                     best_move = move
-                    # print("move: ", move.i, move.j, move.value, " eval: ", eval_value)
                     if max_depth == 1:
                         self.propose_move(move)
 
@@ -271,8 +267,5 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         real_diff_score = self.evaluation_function(game_state, self.l2a(initial_legal_moves), initial_legal_moves)
 
         while True:
-            # run the minimax()
-            # print("depth: ", depth)
             self.minimax_alpha_beta(game_state, depth, 0, -math.inf, math.inf, real_diff_score, initial_legal_moves)
-            # print("move_left:"+str(self.moves_left))
             depth += 1
