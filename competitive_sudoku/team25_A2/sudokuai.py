@@ -16,8 +16,10 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
     """
     player_number = 1
     opponent_number = 2
-    moves_left = 0  # to identify early or late game
+    cells_empty = 0  # to identify early or late game
     early_game = True
+    found_taboo = False
+    exp_taboo = Move(0,0,0)
 
     def __init__(self):
         super().__init__()
@@ -30,11 +32,28 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
             for j in range(N):
                 legal_moves.__getitem__(i).append(set())
                 if game_state.board.get(i, j) == SudokuBoard.empty:
+                    self.cells_empty += 1
                     for value in range(1, N + 1):
                         if not TabooMove(i, j, value) in game_state.taboo_moves and self.is_legal(game_state, i, j,
                                                                                                   value):
                             legal_moves.__getitem__(i).__getitem__(j).add(value)
-                            self.moves_left += 1
+
+
+        forced_moves = self.check_forced_move(legal_moves)
+        old_forced_moves = []
+
+        counter = 0
+        while len(forced_moves) > len(old_forced_moves) and counter < 2:
+            print("New: ", len(forced_moves), "Old: ", len(old_forced_moves), "Diff: ", len(forced_moves) - len(old_forced_moves))
+            for forced_move in forced_moves:
+                if forced_move not in old_forced_moves:
+                    legal_moves = self.update_lm(game_state, legal_moves, forced_move)
+                    legal_moves.__getitem__(forced_move.i).__getitem__(forced_move.j).add(forced_move.value)
+                    old_forced_moves.append(forced_move)
+            forced_moves = self.check_forced_move(legal_moves)
+            counter += 1
+        if self.found_taboo:
+            legal_moves.__getitem__(self.exp_taboo.i).__getitem__(self.exp_taboo.j).add(self.exp_taboo.value)
         return legal_moves
 
     def is_legal(self, game_state: GameState, i: int, j: int, value: int):
@@ -65,38 +84,37 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         return new_legal
 
     def put_lm(self, game_state, legal_moves, move):
-        self.update_lm(game_state, legal_moves, move)
-
-        forced_moves = self.check_forced_move(legal_moves)
-        old_forced_moves = []
-
-        counter = 0
-        while len(forced_moves) > len(old_forced_moves) and counter < 2:
-            for forced_move in forced_moves:
-                if forced_move not in old_forced_moves:
-                    self.update_lm(game_state, legal_moves, forced_move)
-                    legal_moves.__getitem__(forced_move.i).__getitem__(forced_move.j).add(forced_move.value)
-                    old_forced_moves.append(forced_move)
-            forced_moves = self.check_forced_move(legal_moves)
-            counter += 1
-
+        moves = legal_moves
+        moves = self.update_lm(game_state, moves, move)
+        return moves
 
     def update_lm(self, game_state, legal_moves, move):
         N = game_state.board.N
         m = game_state.board.m
         n = game_state.board.n
+        moves = legal_moves
         for i in range(N):
-            if move.value in legal_moves.__getitem__(i).__getitem__(move.j):
-                legal_moves.__getitem__(i).__getitem__(move.j).remove(move.value)
-            if move.value in legal_moves.__getitem__(move.i).__getitem__(i):
-                legal_moves.__getitem__(move.i).__getitem__(i).remove(move.value)
+            if move.value in moves.__getitem__(i).__getitem__(move.j):
+                moves.__getitem__(i).__getitem__(move.j).remove(move.value)
+                if self.found_taboo is False and i != move.i:
+                    self.exp_taboo = Move(i, move.j, move.value)
+                    self.found_taboo = True
+            if move.value in moves.__getitem__(move.i).__getitem__(i):
+                moves.__getitem__(move.i).__getitem__(i).remove(move.value)
+                if self.found_taboo is False and i != move.j:
+                    self.exp_taboo = Move(move.i, i, move.value)
+                    self.found_taboo = True
 
         block_row = move.i // m
         block_column = move.j // n
         for k in range(block_row * m, block_row * m + m):
             for o in range(block_column * n, block_column * n + n):
-                if move.value in legal_moves.__getitem__(k).__getitem__(o):
-                    legal_moves.__getitem__(k).__getitem__(o).remove(move.value)
+                if move.value in moves.__getitem__(k).__getitem__(o):
+                    moves.__getitem__(k).__getitem__(o).remove(move.value)
+                    if self.found_taboo is False and k != move.i and o != move.j:
+                        self.exp_taboo = Move(k, o, move.value)
+                        self.found_taboo = True
+        return moves
 
     def check_forced_move(self, legal_moves):
         forced_moves = []
@@ -164,14 +182,8 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         diff_score = game_state.scores[self.player_number - 1] - game_state.scores[self.opponent_number - 1]
         eval_value = diff_score
         moves = moves
-        old_moves = self.l2a(self.find_legal_moves(game_state))
-        print("test")
-        if moves == old_moves:
-            print("is the same")
-        else:
-            print("not the same")
-            print(legal_moves)
-        if moves:
+
+        if moves and self.early_game:
             curr_player = 1 if game_state.current_player() == self.player_number else -1
             heuristic_point = max([self.compute_move_score(game_state.board, move) for move in moves])
             eval_value = diff_score + 0.2 * curr_player * heuristic_point
@@ -206,7 +218,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                 new_game_state = copy.deepcopy(game_state)
                 new_legal_moves = copy.deepcopy(legal_moves)
                 new_game_state.board.put(move.i, move.j, move.value)
-                self.put_lm(game_state, new_legal_moves, move)
+                new_legal_moves = self.put_lm(game_state, new_legal_moves, move)
                 new_game_state.scores[self.player_number - 1] += self.compute_move_score(game_state.board, move)
                 new_game_state.moves.append(move)
                 eval_value = self.minimax_alpha_beta(new_game_state, max_depth, current_depth + 1,
@@ -214,7 +226,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                 #   compare the best current_max and the eval_value of current move
                 if current_depth == 0 and eval_value > current_max:  # propose a current best move in depth=0
                     best_move = move
-                    print("move: ", move.i, move.j, move.value, " eval: ", eval_value)
+                    # print("move: ", move.i, move.j, move.value, " eval: ", eval_value)
                     if max_depth == 1:
                         self.propose_move(move)
 
@@ -238,7 +250,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                 new_game_state = copy.deepcopy(game_state)
                 new_legal_moves = copy.deepcopy(legal_moves)
                 new_game_state.board.put(move.i, move.j, move.value)
-                self.put_lm(game_state, new_legal_moves, move)
+                new_legal_moves = self.put_lm(game_state, new_legal_moves, move)
                 new_game_state.scores[self.opponent_number - 1] += self.compute_move_score(game_state.board, move)
                 new_game_state.moves.append(move)
                 #   compare the current_min and the eval_value of current move:
@@ -261,9 +273,9 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         while True:
             # run the minimax()
             # print("depth: ", depth)
-            if self.moves_left <= 0.25 * game_state.board.N * game_state.board.N:
+            if self.cells_empty <= 0.25 * game_state.board.N * game_state.board.N:
                 self.early_game = False
             self.minimax_alpha_beta(game_state, depth, 0, -math.inf, math.inf, real_diff_score, initial_legal_moves)
-            self.moves_left -= 2
+            self.cells_empty -= 2
             # print("move_left:"+str(self.moves_left))
             depth += 1
