@@ -273,6 +273,5 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         while True:
             # run the minimax()
             # print("depth: ", depth)
-            self.minimax_alpha_beta(game_state, depth, 0, -math.inf, math.inf, real_diff_score, initial_legal_moves)
-            # print("move_left:"+str(self.moves_left))
+           # print("move_left:"+str(self.moves_left))
             depth += 1
