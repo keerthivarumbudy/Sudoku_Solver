@@ -17,7 +17,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
     player_number = 1
     opponent_number = 2
     found_taboo = False
-    exp_taboo = Move(0,0,0)
+    exp_taboo = Move(0, 0, 0)
 
     def __init__(self):
         super().__init__()
@@ -34,7 +34,6 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                         if not TabooMove(i, j, value) in game_state.taboo_moves and self.is_legal(game_state, i, j,
                                                                                                   value):
                             legal_moves.__getitem__(i).__getitem__(j).add(value)
-
 
         forced_moves = self.check_forced_move(legal_moves)
         old_forced_moves = []
@@ -72,6 +71,10 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         return True
 
     def l2a(self, legal_moves):
+        """
+            Function to change data structure for legal moves
+        """
+
         new_legal = []
         for i in range(len(legal_moves)):
             for j in range(len(legal_moves.__getitem__(i))):
@@ -80,12 +83,10 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                         new_legal.append(Move(i, j, value))
         return new_legal
 
-    def put_lm(self, game_state, legal_moves, move):
-        moves = legal_moves
-        moves = self.update_lm(game_state, moves, move)
-        return moves
-
     def update_lm(self, game_state, legal_moves, move):
+        """
+            Function to update legal moves when going into next depth minimax
+        """
         N = game_state.board.N
         m = game_state.board.m
         n = game_state.board.n
@@ -125,7 +126,9 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         return forced_moves
 
     def compute_move_score(self, board, move):
-        # Function to compute the points we can get by making a certain move given a certain board state
+        """
+        Function to compute the points we can get by making a certain move given a certain board state
+        """
         score_dict = {
             0: 0,
             1: 1,
@@ -188,7 +191,9 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         return eval_value
 
     def is_board_full(self, game_state: GameState):
-        # Function to check if a board is completely filled
+        """
+        Function to check if a board is completely filled
+        """
         N = game_state.board.N
         for i in range(N):
             for j in range(N):
@@ -198,12 +203,13 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
 
     def minimax_alpha_beta(self, game_state: GameState, max_depth, current_depth, alpha, beta, real_diff_score,
                            legal_moves):
-        # Function to execute minimax algorithm with alpha-beta pruning
+        """
+        Function to execute minimax algorithm with alpha-beta pruning
+        """
         best_move = None
         moves = self.l2a(legal_moves)
         if current_depth == max_depth or self.is_board_full(game_state):
             return self.evaluation_function(game_state, moves, legal_moves)
-
 
         if (self.player_number - len(game_state.moves)) % 2 == 1:  # our turn
             if len(moves) == 0:  # if AI_agent cannot find one legal move
@@ -215,7 +221,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                 new_game_state = copy.deepcopy(game_state)
                 new_legal_moves = copy.deepcopy(legal_moves)
                 new_game_state.board.put(move.i, move.j, move.value)
-                new_legal_moves = self.put_lm(game_state, new_legal_moves, move)
+                new_legal_moves = self.update_lm(game_state, new_legal_moves, move)
                 new_game_state.scores[self.player_number - 1] += self.compute_move_score(game_state.board, move)
                 new_game_state.moves.append(move)
                 eval_value = self.minimax_alpha_beta(new_game_state, max_depth, current_depth + 1,
@@ -246,7 +252,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                 new_game_state = copy.deepcopy(game_state)
                 new_legal_moves = copy.deepcopy(legal_moves)
                 new_game_state.board.put(move.i, move.j, move.value)
-                new_legal_moves = self.put_lm(game_state, new_legal_moves, move)
+                new_legal_moves = self.update_lm(game_state, new_legal_moves, move)
                 new_game_state.scores[self.opponent_number - 1] += self.compute_move_score(game_state.board, move)
                 new_game_state.moves.append(move)
                 #   compare the current_min and the eval_value of current move:
