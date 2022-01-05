@@ -5,6 +5,7 @@
 from typing import List, Tuple, Union
 
 
+
 class Move(object):
     """A Move is a tuple (i, j, value) that represents the action board.put(i, j, value) for a given
     sudoku configuration board."""

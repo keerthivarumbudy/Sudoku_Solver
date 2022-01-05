@@ -19,3 +19,8 @@ version v7:
 version v8:
 - Added some width and height methods to SudokuBoard.
 - Added a current_player method to GameState.
+
+version v9:
+- Added saving options to the SudokuAI base class
+- Added random_save_player as an example
+- Added automatic removal of the save files before a run is started in simulate_game.py

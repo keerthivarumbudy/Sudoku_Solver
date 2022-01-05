@@ -10,6 +10,7 @@ import multiprocessing
 import platform
 import re
 import time
+import os
 from pathlib import Path
 from competitive_sudoku.execute import solve_sudoku
 from competitive_sudoku.sudoku import GameState, SudokuBoard, Move, TabooMove, load_sudoku_from_text
@@ -149,12 +150,23 @@ def main():
     module2 = importlib.import_module(args.second + '.sudokuai')
     player1 = module1.SudokuAI()
     player2 = module2.SudokuAI()
-    if args.first in ('random_player', 'greedy_player'):
+    player1.player_number = 1
+    player2.player_number = 2
+    if args.first in ('random_player', 'greedy_player', 'random_save_player'):
         player1.solve_sudoku_path = solve_sudoku_path
-    if args.second in ('random_player', 'greedy_player'):
+    if args.second in ('random_player', 'greedy_player', 'random_save_player'):
         player2.solve_sudoku_path = solve_sudoku_path
 
+    #clean up files
+    if os.path.isfile(os.path.join(os.getcwd(), '-1.pkl')): #Check if there actually is something
+        os.remove(os.path.join(os.getcwd(), '-1.pkl'))
+    if os.path.isfile(os.path.join(os.getcwd(), '1.pkl')): #Check if there actually is something
+        os.remove(os.path.join(os.getcwd(), '1.pkl'))
+    if os.path.isfile(os.path.join(os.getcwd(), '2.pkl')): #Check if there actually is something
+        os.remove(os.path.join(os.getcwd(), '2.pkl'))
+
     simulate_game(board, player1, player2, solve_sudoku_path=solve_sudoku_path, calculation_time=args.time)
+
 
 
 if __name__ == '__main__':
