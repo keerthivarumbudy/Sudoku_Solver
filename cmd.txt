@@ -1,0 +1,1 @@
+python simulate_game.py --first 25_A2 --second greedy_player --board boards/empty-4x4.txt
