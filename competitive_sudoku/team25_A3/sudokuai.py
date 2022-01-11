@@ -4,7 +4,6 @@
 
 import copy
 import math
-import random
 
 import competitive_sudoku.sudokuai
 from competitive_sudoku.sudoku import GameState, Move, SudokuBoard, TabooMove
@@ -14,10 +13,10 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
     """
     Sudoku AI that computes a move for a given sudoku configuration.
     """
-    player_number = 1
-    opponent_number = 2
-    found_taboo = False
-    exp_taboo = Move(0, 0, 0)
+    player_number = 1           # the order of our AI
+    opponent_number = 2         # the order of opponent
+    found_taboo = False         # if we find a taboo move
+    exp_taboo = Move(0, 0, 0)   # the taboo move we can use
 
     def __init__(self):
         super().__init__()
@@ -40,7 +39,6 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
 
         counter = 0
         while len(forced_moves) > len(old_forced_moves) and counter < 2:
-            # print("New: ", len(forced_moves), "Old: ", len(old_forced_moves), "Diff: ", len(forced_moves) - len(old_forced_moves))
             for forced_move in forced_moves:
                 if forced_move not in old_forced_moves:
                     legal_moves = self.update_lm(game_state, legal_moves, forced_move)
@@ -127,7 +125,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
 
     def compute_move_score(self, board, move):
         """
-        Function to compute the points we can get by making a certain move given a certain board state
+            Function to compute the points we can get by making a certain move given a certain board state
         """
         score_dict = {
             0: 0,
@@ -171,13 +169,13 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
 
     def evaluation_function(self, game_state: GameState, moves):
         """
-        Function to calculate the evaluation value
-        -- version 1.0 --
-        eval_value = diff_score + point_heuristic
-        diff_score is the difference of scores between the two players given a gameState
-        heuristic_point is based on the current gameState:
-            v1.0: heuristic_point is the max point player can get in next move times a coefficient
-                    then times 1 or -1 (if opponent's turn)
+            Function to calculate the evaluation value
+            -- version 1.0 --
+            eval_value = diff_score + point_heuristic
+            diff_score is the difference of scores between the two players given a gameState
+            heuristic_point is based on the current gameState:
+                v1.0: heuristic_point is the max point player can get in next move times a coefficient
+                        then times 1 or -1 (if opponent's turn)
         """
         diff_score = game_state.scores[self.player_number - 1] - game_state.scores[self.opponent_number - 1]
         eval_value = diff_score
@@ -192,7 +190,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
 
     def is_board_full(self, game_state: GameState):
         """
-        Function to check if a board is completely filled
+            Function to check if a board is completely filled
         """
         N = game_state.board.N
         length_move = len(game_state.moves)
@@ -203,7 +201,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
 
     def compute_best_move(self, game_state: GameState) -> None:
 
-        # Create a root for monte_carlo_tree
+        # Create the root for monte carlo tree search
         [self.player_number, self.opponent_number] = (1, 2) if len(game_state.moves) % 2 == 0 else (2, 1)
         root = Node(game_state, curr_player=self.opponent_number)
         root.n = 1
@@ -213,39 +211,19 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         initial_legal_moves = self.find_legal_moves(game_state)
         root.legal_moves = initial_legal_moves
         root.num_lm = len(self.l2a(initial_legal_moves))
-        # new_moves = self.l2a(initial_legal_moves)
-        # self.propose_move(new_moves[0])
-        # print('len:'+str(len(new_moves)))
-        # for i in range(len(new_moves)):
-        #     move = new_moves[i]
-        #     new_game_state = copy.deepcopy(root.game_state)
-        #     new_game_state.board.put(move.i, move.j, move.value)
-        #     new_game_state.scores[self.player_number - 1] += self.compute_move_score(root.game_state.board, move)
-        #     new_game_state.moves.append(move)
-        #     new_node = Node(game_state=new_game_state, move=move, parent=root, curr_player=self.player_number)
-        #     root.children[i] = new_node
-        #     print("i:"+str(i))
-        # print('children of root done')
 
-        # Do searching till run out of time
-        count = 0
-        while count < 100000:
-            count += 1
-            # print("search:"+str(count))
+        # Do monte carlo tree search till run out of time
+        while True:
             self.monte_carlo_tree_search(root)
 
     def monte_carlo_tree_search(self, root):
-        # find the leaf node we need to simulate
 
+        # record the current difference of points
         real_diff = root.game_state.scores[self.player_number - 1] = root.game_state.scores[self.opponent_number - 1]
-
+        # find the leaf node we need to simulate
         leaf = self.traverse(root)
-        # print('leaf:'+str(leaf.move))
-
         # simulate the rest game
         simulation_result = self.simulate(leaf, real_diff)
-        # print('simulation_result:' + str(simulation_result))
-
         # back propagate according to result of simulation and update the proposed move
         self.backPropagate(leaf, simulation_result)
 
@@ -255,18 +233,15 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         """
         # keep going deeper to a leaf
         node = node
-        # print('node:'+str(node.move))
-        # print('lm-NUM:'+str(node.num_lm))
         while node.children and node.num_lm == len(node.children):
             node = node.best_utc()
-            # print('pick:'+str(node.move))
 
         # if the leaf is unvisited, return it
         if node.n == 0:
             return node
 
         # if the leaf is visited, create children nodes for the leaf and add them to the tree:
-        # find legal moves
+        # find legal moves if we have not done that for this node yet.
         if node.legal_moves is None:  # if node is root
             lm = copy.deepcopy(node.parent.legal_moves)
             new_moves = self.update_lm(node.game_state, lm, move=node.move)
@@ -274,14 +249,18 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
             node.num_lm = len(self.l2a(new_moves))
         else:
             new_moves = node.legal_moves
+
         moves = self.l2a(new_moves)
 
-        # create a node for each legal move
+        # create a child node for next legal move and return it
         if moves:
+            # find the index of next move we need to explore
             i = len(node.children)
             move = moves[i]
+            # update game_state
             new_game_state = copy.deepcopy(node.game_state)
             new_game_state.board.put(move.i, move.j, move.value)
+            new_game_state.moves.append(move)
             if node.curr_player == self.player_number:
                 new_game_state.scores[self.opponent_number - 1] += self.compute_move_score(node.game_state.board,
                                                                                            move)
@@ -290,12 +269,13 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                 new_game_state.scores[self.player_number - 1] += self.compute_move_score(node.game_state.board,
                                                                                          move)
                 next_player = self.player_number
-            new_game_state.moves.append(move)
+            #
             child = Node(game_state=new_game_state, move=move, parent=node, curr_player=next_player)
             node.children[i] = child
-            return node.children[i]  # return the first child of the leaf
-        else:
-            return node  # if the leaf have no child, return itself
+            return node.children[i]
+
+        else:  # if the leaf node have no child, return the node itself
+            return node
 
     def simulate(self, node, real_diff):
         """
@@ -327,7 +307,6 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                 self.propose_move(self.exp_taboo)
             else:
                 self.propose_move(move)
-            # print('propose:'+str(move))
             return
 
         # update state of nodes in the path from the leaf to root
@@ -339,23 +318,23 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
 
 class Node:
     """
-    Class of Monte Carlo Tree Searching
+        Monte Carlo Tree Searching
     """
 
     def __init__(self, game_state: GameState, move=None, parent=None, curr_player=0):
-        self.game_state = game_state
-        self.move = move
-        self.parent = parent
-        self.children = {}
-        self.p = 0
-        self.n = 0
-        self.curr_player = curr_player
-        self.legal_moves = None
-        self.num_lm = 0
+        self.game_state = game_state        # store the game_state after this move
+        self.move = move                    # store the move made in this node
+        self.parent = parent                # point to parent node
+        self.children = {}                  # store all children nodes
+        self.p = 0                          # a value used by MCTS: the result accumulated during visits
+        self.n = 0                          # a value used by MCTS: the number of times the node be visited
+        self.curr_player = curr_player      # which player's turn
+        self.legal_moves = None             # store all legal move
+        self.num_lm = 0                     # number of legal moves
 
     def best_n(self):
         """
-            Choose the best move with max n
+            Choose the move of child node with max n
         """
         index = 0
         max_n = 0
@@ -364,11 +343,11 @@ class Node:
             if curr_n > max_n:
                 max_n = curr_n
                 index = i
-        return self.children.get(index)
+        return self.children.get(index).move, max_n
 
     def best_pn(self):
         """
-            Choose the child node with max p/n
+            Choose the move of child node with max p/n
         """
         index = 0
         max_pn = -math.inf
@@ -376,9 +355,6 @@ class Node:
         for i in range(len(self.children)):
             n = self.children.get(i).n
             p = self.children.get(i).p
-            # print('move:' + str(self.children.get(i).move))
-            # print('P-value:' + str(p))
-            # print('N-value:' + str(n))
             if n > 0:
                 curr_pn = p / n
             if curr_pn > max_pn:
