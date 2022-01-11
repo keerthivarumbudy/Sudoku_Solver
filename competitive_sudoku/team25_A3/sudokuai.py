@@ -195,11 +195,11 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         Function to check if a board is completely filled
         """
         N = game_state.board.N
-        for i in range(N):
-            for j in range(N):
-                if game_state.board.get(i, j) == SudokuBoard.empty:
-                    return False
-        return True
+        length_move = len(game_state.moves)
+        if length_move < N*N:
+            return False
+        else:
+            return True
 
     def compute_best_move(self, game_state: GameState) -> None:
 
@@ -212,32 +212,39 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         # Add children nodes of root to the tree
         initial_legal_moves = self.find_legal_moves(game_state)
         root.legal_moves = initial_legal_moves
-        new_moves = self.l2a(initial_legal_moves)
-        self.propose_move(new_moves[0])
-        for i in range(len(new_moves)):
-            move = new_moves[i]
-            new_game_state = copy.deepcopy(root.game_state)
-            new_game_state.board.put(move.i, move.j, move.value)
-            new_game_state.scores[self.player_number - 1] += self.compute_move_score(root.game_state.board, move)
-            new_game_state.moves.append(move)
-            new_node = Node(game_state=new_game_state, move=move, parent=root, curr_player=self.player_number)
-            root.children[i] = new_node
+        root.num_lm = len(self.l2a(initial_legal_moves))
+        # new_moves = self.l2a(initial_legal_moves)
+        # self.propose_move(new_moves[0])
+        # print('len:'+str(len(new_moves)))
+        # for i in range(len(new_moves)):
+        #     move = new_moves[i]
+        #     new_game_state = copy.deepcopy(root.game_state)
+        #     new_game_state.board.put(move.i, move.j, move.value)
+        #     new_game_state.scores[self.player_number - 1] += self.compute_move_score(root.game_state.board, move)
+        #     new_game_state.moves.append(move)
+        #     new_node = Node(game_state=new_game_state, move=move, parent=root, curr_player=self.player_number)
+        #     root.children[i] = new_node
+        #     print("i:"+str(i))
+        # print('children of root done')
 
         # Do searching till run out of time
         count = 0
-        while count < 20:
+        while count < 100000:
             count += 1
-            print("search:"+str(count))
+            # print("search:"+str(count))
             self.monte_carlo_tree_search(root)
 
     def monte_carlo_tree_search(self, root):
         # find the leaf node we need to simulate
+
+        real_diff = root.game_state.scores[self.player_number - 1] = root.game_state.scores[self.opponent_number - 1]
+
         leaf = self.traverse(root)
-        print('leaf:'+str(leaf.move))
+        # print('leaf:'+str(leaf.move))
 
         # simulate the rest game
-        simulation_result = self.simulate(leaf)
-        print('simulation_result:' + str(simulation_result))
+        simulation_result = self.simulate(leaf, real_diff)
+        # print('simulation_result:' + str(simulation_result))
 
         # back propagate according to result of simulation and update the proposed move
         self.backPropagate(leaf, simulation_result)
@@ -246,61 +253,84 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         """
             find the node we need to simulate
         """
-        node = node
         # keep going deeper to a leaf
-        while node.children:
+        node = node
+        # print('node:'+str(node.move))
+        # print('lm-NUM:'+str(node.num_lm))
+        while node.children and node.num_lm == len(node.children):
             node = node.best_utc()
-            print('pick:'+str(node.move))
+            # print('pick:'+str(node.move))
 
-        # if the leaf is unvisited, return the leaf
+        # if the leaf is unvisited, return it
         if node.n == 0:
             return node
 
-        # if the leaf is visited, create children nodes for the leaf and add them to the tree
-        lm = copy.deepcopy(node.parent.legal_moves)
-        new_moves = self.update_lm(node.game_state, lm, move=node.move)
-        node.legal_moves = new_moves
-        moves = self.l2a(new_moves)
-        if moves:
-            for i in range(len(moves)):
-                move = moves[i]
-                new_game_state = copy.deepcopy(node.game_state)
-                new_game_state.board.put(move.i, move.j, move.value)
-                if node.curr_player == self.player_number:
-                    new_game_state.scores[self.opponent_number - 1] += self.compute_move_score(node.game_state.board,
-                                                                                               move)
-                    next_player = self.opponent_number
-                else:
-                    new_game_state.scores[self.player_number - 1] += self.compute_move_score(node.game_state.board,
-                                                                                             move)
-                    next_player = self.player_number
-                new_game_state.moves.append(move)
-                child = Node(game_state=new_game_state, move=move, parent=node, curr_player=next_player)
-                node.children[i] = child
-                # return the first child of the leaf
-            return node.children[0]
+        # if the leaf is visited, create children nodes for the leaf and add them to the tree:
+        # find legal moves
+        if node.legal_moves is None:  # if node is root
+            lm = copy.deepcopy(node.parent.legal_moves)
+            new_moves = self.update_lm(node.game_state, lm, move=node.move)
+            node.legal_moves = new_moves
+            node.num_lm = len(self.l2a(new_moves))
         else:
-            return node
+            new_moves = node.legal_moves
+        moves = self.l2a(new_moves)
 
-    def simulate(self, node):
+        # create a node for each legal move
+        if moves:
+            i = len(node.children)
+            move = moves[i]
+            new_game_state = copy.deepcopy(node.game_state)
+            new_game_state.board.put(move.i, move.j, move.value)
+            if node.curr_player == self.player_number:
+                new_game_state.scores[self.opponent_number - 1] += self.compute_move_score(node.game_state.board,
+                                                                                           move)
+                next_player = self.opponent_number
+            else:
+                new_game_state.scores[self.player_number - 1] += self.compute_move_score(node.game_state.board,
+                                                                                         move)
+                next_player = self.player_number
+            new_game_state.moves.append(move)
+            child = Node(game_state=new_game_state, move=move, parent=node, curr_player=next_player)
+            node.children[i] = child
+            return node.children[i]  # return the first child of the leaf
+        else:
+            return node  # if the leaf have no child, return itself
+
+    def simulate(self, node, real_diff):
         """
             simulation result of input node
         """
-        # simulate the game
+        # update legal moves one more time
         lm = copy.deepcopy(node.parent.legal_moves)
         new_moves = self.update_lm(node.parent.game_state, lm, move=node.move)
         moves = self.l2a(new_moves)
-        return self.evaluation_function(node.game_state, moves)
+
+        # if there is taboo move in Search Tree return the difference of points of root state
+        # else simulate result by eval_func
+        if len(moves) == 0 and self.is_board_full(node.game_state):
+            score = real_diff
+        else:
+            score = self.evaluation_function(node.game_state, moves)
+
+        return score
 
     def backPropagate(self, node, result):
         # if reach root, propose a move
         if node.parent is None:
-            move = node.best_n().move
-            self.propose_move(move)
-            print('propose:'+str(move))
+            move, max_value = node.best_pn()
+            # if our AI won't play the last move and we have no good move in this turn,
+            # then propose taboo move if we find one.
+            if max_value < 0\
+                    and (math.sqrt(node.game_state.board.N) - len(node.game_state.moves)) % 2 == 0\
+                    and self.found_taboo:
+                self.propose_move(self.exp_taboo)
+            else:
+                self.propose_move(move)
+            # print('propose:'+str(move))
             return
 
-        # update state of node in the path
+        # update state of nodes in the path from the leaf to root
         node.n += 1
         c = 1 if node.curr_player == self.player_number else -1
         node.p += c * result
@@ -321,8 +351,12 @@ class Node:
         self.n = 0
         self.curr_player = curr_player
         self.legal_moves = None
+        self.num_lm = 0
 
     def best_n(self):
+        """
+            Choose the best move with max n
+        """
         index = 0
         max_n = 0
         for i in range(len(self.children)):
@@ -332,19 +366,43 @@ class Node:
                 index = i
         return self.children.get(index)
 
+    def best_pn(self):
+        """
+            Choose the child node with max p/n
+        """
+        index = 0
+        max_pn = -math.inf
+        curr_pn = -math.inf
+        for i in range(len(self.children)):
+            n = self.children.get(i).n
+            p = self.children.get(i).p
+            # print('move:' + str(self.children.get(i).move))
+            # print('P-value:' + str(p))
+            # print('N-value:' + str(n))
+            if n > 0:
+                curr_pn = p / n
+            if curr_pn > max_pn:
+                max_pn = curr_pn
+                index = i
+        return self.children.get(index).move, max_pn
+
     def best_utc(self):
+        """
+            Find best child node with max utc
+        """
         index = 0
         best_utc = -math.inf
         for i in range(len(self.children)):
             curr_utc = self.children.get(i).utc()
-            # print('move:'+str(self.children.get(i).move))
-            # print('move_utc:' + str(self.children.get(i).utc()))
             if curr_utc > best_utc:
                 best_utc = curr_utc
                 index = i
         return self.children.get(index)
 
     def utc(self):
+        """
+            Compute utc value for MCTS
+        """
         if self.n == 0:
             return math.inf
         else:
