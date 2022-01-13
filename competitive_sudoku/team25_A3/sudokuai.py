@@ -301,7 +301,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
             move, max_value = node.best_pn()
             # if our AI won't play the last move and we have no good move in this turn,
             # then propose taboo move if we find one.
-            if max_value < 0\
+            if max_value <= 0\
                     and (math.sqrt(node.game_state.board.N) - len(node.game_state.moves)) % 2 == 0\
                     and self.found_taboo:
                 self.propose_move(self.exp_taboo)
