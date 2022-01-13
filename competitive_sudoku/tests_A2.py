@@ -13,7 +13,7 @@ with open('../results.csv', 'a', newline='') as csvfile:
 for board in boards:
     for opponent in opponents:
         for time in [0.1, 0.5, 1, 5]:
-            command = "python simulate_game_bulk.py --first team25_A2 --second " + opponent + " --board "+ board + " --time " + str(time) + " --iter " + str(iter) + " --workers " + str(workers)
+            command = "python simulate_game_bulk.py --first team25_A3 --second " + opponent + " --board "+ board + " --time " + str(time) + " --iter " + str(iter) + " --workers " + str(workers)
             os.system(command)
-            command = "python simulate_game_bulk.py --first "+ opponent +" --second team25_A2 --board " + board +" --time " + str(time) + " --iter " + str(iter) + " --workers " + str(workers)
+            command = "python simulate_game_bulk.py --first "+ opponent +" --second team25_A3 --board " + board +" --time " + str(time) + " --iter " + str(iter) + " --workers " + str(workers)
             os.system(command)

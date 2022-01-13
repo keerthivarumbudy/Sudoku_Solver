@@ -45,17 +45,23 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
             # print(game_state.moves[-1])
             # print(self.exp_taboo)
             # print(legal_moves)
-            first = game_state.moves[-2]
-            second = game_state.moves[-1]
-            if first not in game_state.taboo_moves:
-                legal_moves = self.update_lm(game_state, legal_moves, first)
-            elif first.value in legal_moves.__getitem__(first.i).__getitem__(first.j):
-                legal_moves.__getitem__(first.i).__getitem__(first.j).remove(first.value)
-
-            if second not in game_state.taboo_moves:
-                legal_moves = self.update_lm(game_state, legal_moves, second)
-            elif second.value in legal_moves.__getitem__(second.i).__getitem__(second.j):
-                legal_moves.__getitem__(second.i).__getitem__(second.j).remove(second.value)
+            for k in range(self.opponent_number):
+                move = game_state.moves[-(k+1)]
+                if move not in game_state.taboo_moves:
+                    legal_moves = self.update_lm(game_state, legal_moves, move)
+                elif move.value in legal_moves.__getitem__(move.i).__getitem__(move.j):
+                    legal_moves.__getitem__(move.i).__getitem__(move.j).remove(move.value)
+            # first = game_state.moves[-2]
+            # second = game_state.moves[-1]
+            # if first not in game_state.taboo_moves:
+            #     legal_moves = self.update_lm(game_state, legal_moves, first)
+            # elif first.value in legal_moves.__getitem__(first.i).__getitem__(first.j):
+            #     legal_moves.__getitem__(first.i).__getitem__(first.j).remove(first.value)
+            #
+            # if second not in game_state.taboo_moves:
+            #     legal_moves = self.update_lm(game_state, legal_moves, second)
+            # elif second.value in legal_moves.__getitem__(second.i).__getitem__(second.j):
+            #     legal_moves.__getitem__(second.i).__getitem__(second.j).remove(second.value)
             self.found_taboo = False
             self.exp_taboo = Move(0, 0, 0)
 
@@ -123,7 +129,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         if self.found_taboo:
             # print("taboo: ", self.exp_taboo)
             legal_moves.__getitem__(self.exp_taboo.i).__getitem__(self.exp_taboo.j).add(self.exp_taboo.value)
-        print(legal_moves)
+        # print(legal_moves)
         self.save(legal_moves)
         return legal_moves
 
