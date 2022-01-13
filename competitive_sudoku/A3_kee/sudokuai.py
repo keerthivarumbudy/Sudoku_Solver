@@ -10,6 +10,7 @@ import competitive_sudoku.sudokuai
 from competitive_sudoku.sudoku import GameState, Move, SudokuBoard, TabooMove
 
 
+
 class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
     """
     Sudoku AI that computes a move for a given sudoku configuration.
@@ -282,7 +283,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
             if self.num_empty_cells > game_state.board.m + game_state.board.n:
                 if self.num_empty_cells % 2 == 0:
                     # we do not get last move
-                    if score <= 0 :
+                    if score <= 0 and self.found_taboo:
                         self.propose_move(self.exp_taboo)
                         return
             depth += 1
