@@ -184,7 +184,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         if moves:
             curr_player = 1 if game_state.current_player() == self.player_number else -1
             heuristic_point = max([self.compute_move_score(game_state.board, move) for move in moves])
-            eval_value = diff_score + 0.2 * curr_player * heuristic_point
+            eval_value = diff_score + 0.5 * curr_player * heuristic_point
 
         return eval_value
 
