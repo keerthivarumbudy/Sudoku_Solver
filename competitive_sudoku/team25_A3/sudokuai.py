@@ -42,7 +42,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
             # print(game_state.moves[-2])
             # print(game_state.moves[-1])
             # print(self.exp_taboo)
-            # print(legal_moves)
+            print(legal_moves)
             first = game_state.moves[-2]
             second = game_state.moves[-1]
             if first not in game_state.taboo_moves:
@@ -61,7 +61,9 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         old_forced_moves = []
 
         counter = 0
-        while len(forced_moves) > len(old_forced_moves) and counter < 2:
+        print("start while loop")
+        while len(forced_moves) > len(old_forced_moves) and counter < 3:
+            print("new iteration with counter: ", counter)
             # print("New: ", len(forced_moves), "Old: ", len(old_forced_moves), "Diff: ", len(forced_moves) - len(old_forced_moves))
             for forced_move in forced_moves:
                 if forced_move not in old_forced_moves:
@@ -70,6 +72,40 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                     old_forced_moves.append(forced_move)
             forced_moves = self.check_forced_move(legal_moves)
             counter += 1
+        print("end while loop")
+        counter = 0
+        # test = len(self.l2a(legal_moves))
+        # print("amount of legal moves: ", test)
+        while counter < 2:
+            block = [0] * N
+            for i in range(N):
+                row = [-1] * N
+                column = [-1] * N
+                for j in range(N):
+                    for value in legal_moves.__getitem__(i).__getitem__(j):
+                        if row[value - 1] is -1:
+                            row[value - 1] = j
+                        else:
+                            row[value - 1] = -2
+                    for value in legal_moves.__getitem__(j).__getitem__(i):
+                        if column[value - 1] is -1:
+                            column[value - 1] = j
+                        else:
+                            column[value - 1] = -2
+                for j in range(N):
+                    if row[j] >= 0:
+                        self.update_lm(game_state,legal_moves,Move(i, row[j], j+1))
+                        legal_moves.__getitem__(i).__getitem__(row[j]).add(j+1)
+                    if column[j] >= 0:
+                        self.update_lm(game_state,legal_moves,Move(column[j], i, j+1))
+                        legal_moves.__getitem__(column[j]).__getitem__(i).add(j+1)
+
+
+            counter += 1
+            # test = len(self.l2a(legal_moves))
+            # print("amount of legal moves: ", test)
+
+
         if self.found_taboo:
             legal_moves.__getitem__(self.exp_taboo.i).__getitem__(self.exp_taboo.j).add(self.exp_taboo.value)
         # print(legal_moves)
@@ -114,17 +150,20 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         N = game_state.board.N
         m = game_state.board.m
         n = game_state.board.n
+        counter = 0
         moves = legal_moves
         moves.__getitem__(move.i).__getitem__(move.j).clear()
         moves.__getitem__(move.i).__getitem__(move.j).add(move.value)
         for i in range(N):
             if move.value in moves.__getitem__(i).__getitem__(move.j):
                 moves.__getitem__(i).__getitem__(move.j).remove(move.value)
+                counter += 1
                 if self.found_taboo is False and i != move.i:
                     self.exp_taboo = Move(i, move.j, move.value)
                     self.found_taboo = True
             if move.value in moves.__getitem__(move.i).__getitem__(i):
                 moves.__getitem__(move.i).__getitem__(i).remove(move.value)
+                counter += 1
                 if self.found_taboo is False and i != move.j:
                     self.exp_taboo = Move(move.i, i, move.value)
                     self.found_taboo = True
@@ -135,9 +174,11 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
             for o in range(block_column * n, block_column * n + n):
                 if move.value in moves.__getitem__(k).__getitem__(o):
                     moves.__getitem__(k).__getitem__(o).remove(move.value)
+                    counter += 1
                     if self.found_taboo is False and k != move.i and o != move.j:
                         self.exp_taboo = Move(k, o, move.value)
                         self.found_taboo = True
+        # print(counter)
         return moves
 
     def check_forced_move(self, legal_moves):
