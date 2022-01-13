@@ -24,9 +24,11 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
 
     def find_legal_moves(self, game_state: GameState) -> [Move]:
         N = game_state.board.N
+        m = game_state.board.m
+        n = game_state.board.n
         legal_moves = self.load()
         if legal_moves is None:
-            print("No saved structure")
+            # print("No saved structure")
             legal_moves = []
             for i in range(N):
                 legal_moves.append([])
@@ -38,11 +40,11 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                                                                                                       value):
                                 legal_moves.__getitem__(i).__getitem__(j).add(value)
         else:
-            print("saved structure")
+            # print("saved structure")
             # print(game_state.moves[-2])
             # print(game_state.moves[-1])
             # print(self.exp_taboo)
-            print(legal_moves)
+            # print(legal_moves)
             first = game_state.moves[-2]
             second = game_state.moves[-1]
             if first not in game_state.taboo_moves:
@@ -61,9 +63,9 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         old_forced_moves = []
 
         counter = 0
-        print("start while loop")
+        # print("start while loop")
         while len(forced_moves) > len(old_forced_moves) and counter < 3:
-            print("new iteration with counter: ", counter)
+            # print("new iteration with counter: ", counter)
             # print("New: ", len(forced_moves), "Old: ", len(old_forced_moves), "Diff: ", len(forced_moves) - len(old_forced_moves))
             for forced_move in forced_moves:
                 if forced_move not in old_forced_moves:
@@ -72,12 +74,11 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                     old_forced_moves.append(forced_move)
             forced_moves = self.check_forced_move(legal_moves)
             counter += 1
-        print("end while loop")
+        # print("end while loop")
         counter = 0
-        # test = len(self.l2a(legal_moves))
+        test = len(self.l2a(legal_moves))
         # print("amount of legal moves: ", test)
-        while counter < 2:
-            block = [0] * N
+        while counter < 2 and test > (N*N*N)/10:
             for i in range(N):
                 row = [-1] * N
                 column = [-1] * N
@@ -99,7 +100,20 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                     if column[j] >= 0:
                         self.update_lm(game_state,legal_moves,Move(column[j], i, j+1))
                         legal_moves.__getitem__(column[j]).__getitem__(i).add(j+1)
-
+            for block_row in range(m):
+                for block_column in range(n):
+                    block = [-1] * N
+                    for k in range(block_row * m, block_row * m + m):
+                        for o in range(block_column * n, block_column * n + n):
+                            for value in legal_moves.__getitem__(k).__getitem__(o):
+                                if block[value - 1] is -1:
+                                    block[value - 1] = (k, o)
+                                else:
+                                    block[value - 1] = -2
+                    for j in range(N):
+                        if type(block[j]) is tuple:
+                            self.update_lm(game_state,legal_moves,Move(block[j][0], block[j][1], j + 1))
+                            legal_moves.__getitem__(block[j][0]).__getitem__(block[j][1]).add(j + 1)
 
             counter += 1
             # test = len(self.l2a(legal_moves))
@@ -107,8 +121,9 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
 
 
         if self.found_taboo:
+            # print("taboo: ", self.exp_taboo)
             legal_moves.__getitem__(self.exp_taboo.i).__getitem__(self.exp_taboo.j).add(self.exp_taboo.value)
-        # print(legal_moves)
+        print(legal_moves)
         self.save(legal_moves)
         return legal_moves
 
