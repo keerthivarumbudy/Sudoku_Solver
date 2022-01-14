@@ -208,21 +208,28 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
 
         counter = 0
         num_legal_moves = len(self.l2a(legal_moves))
+        # While the counter is not 2 and we are not in late game
         while counter < 2 and num_legal_moves > (N*N*N)/10:
+            # For each row, column and block find all values that do not repeat in the same row, column or block
             for i in range(N):
                 row = [-1] * N
                 column = [-1] * N
                 for j in range(N):
                     for value in legal_moves.__getitem__(i).__getitem__(j):
+                        # If a value has not been seen yet in the same row update the array
                         if row[value - 1] == -1:
                             row[value - 1] = j
                         else:
+                            # If a value has been seen twice in the same row remove it from the array
                             row[value - 1] = -2
                     for value in legal_moves.__getitem__(j).__getitem__(i):
+                        # If a value has not been seen yet in the same column update the array
                         if column[value - 1] == -1:
                             column[value - 1] = j
                         else:
+                            # If a value has been seen twice in the same column remove it from the array
                             column[value - 1] = -2
+                # For each value remaining in the arrays check if a outlier move has been found and update the matrix
                 for j in range(N):
                     if row[j] >= 0:
                         self.update_lm(game_state,legal_moves,Move(i, row[j], j+1))
@@ -237,9 +244,12 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                         for o in range(block_column * n, block_column * n + n):
                             for value in legal_moves.__getitem__(k).__getitem__(o):
                                 if block[value - 1] == -1:
+                                    # If a value has not been seen yet in the same block update the array
                                     block[value - 1] = (k, o)
                                 else:
+                                    # If a value has been seen twice in the same block remove it from the array
                                     block[value - 1] = -2
+                    # For each value remaining in the arrays check if a outlier move has been found and update the matrix
                     for j in range(N):
                         if type(block[j]) is tuple:
                             self.update_lm(game_state,legal_moves,Move(block[j][0], block[j][1], j + 1))
