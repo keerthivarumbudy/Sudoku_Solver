@@ -23,79 +23,203 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
         super().__init__()
 
     def find_legal_moves(self, game_state: GameState) -> [Move]:
+        """
+            Function to construct or load and update the data structure for legal moves
+        """
         N = game_state.board.N
         m = game_state.board.m
         n = game_state.board.n
+        # check if there already exists a matrix of suggested legal moves
         legal_moves = self.load()
         if legal_moves is None:
-            # print("No saved structure")
-            legal_moves = []
-            for i in range(N):
-                legal_moves.append([])
-                for j in range(N):
-                    legal_moves.__getitem__(i).append(set())
-                    if game_state.board.get(i, j) == SudokuBoard.empty:
-                        for value in range(1, N + 1):
-                            if not TabooMove(i, j, value) in game_state.taboo_moves and self.is_legal(game_state, i, j,
-                                                                                                      value):
-                                legal_moves.__getitem__(i).__getitem__(j).add(value)
+            # if there is no matrix saved, construct a new one using the gamestate
+            legal_moves = self.construct_legal(game_state)
         else:
-            # print("saved structure")
-            # print(game_state.moves[-2])
-            # print(game_state.moves[-1])
-            # print(self.exp_taboo)
-            # print(legal_moves)
-            for k in range(self.opponent_number):
+            # if a matrix exists it needs to be updated using the previously played moves
+            history = 1
+            if len(game_state.moves) >= 2:
+                # make sure more than 1 moves have been played
+                history = 2
+            for k in range(history):
+                # for the past 1 or 2 moves update the matrix
                 move = game_state.moves[-(k+1)]
                 if move not in game_state.taboo_moves:
+                    # if the move is not a taboo move a normal update can be used
                     legal_moves = self.update_lm(game_state, legal_moves, move)
                 elif move.value in legal_moves.__getitem__(move.i).__getitem__(move.j):
+                    # else if it is a taboo move and the value is still in the matrix remove it
                     legal_moves.__getitem__(move.i).__getitem__(move.j).remove(move.value)
-            # first = game_state.moves[-2]
-            # second = game_state.moves[-1]
-            # if first not in game_state.taboo_moves:
-            #     legal_moves = self.update_lm(game_state, legal_moves, first)
-            # elif first.value in legal_moves.__getitem__(first.i).__getitem__(first.j):
-            #     legal_moves.__getitem__(first.i).__getitem__(first.j).remove(first.value)
-            #
-            # if second not in game_state.taboo_moves:
-            #     legal_moves = self.update_lm(game_state, legal_moves, second)
-            # elif second.value in legal_moves.__getitem__(second.i).__getitem__(second.j):
-            #     legal_moves.__getitem__(second.i).__getitem__(second.j).remove(second.value)
             self.found_taboo = False
             self.exp_taboo = Move(0, 0, 0)
 
+        # Use the heuristic for forced moves to reduce the amount of legal moves
+        legal_moves = self.find_forced_move(game_state, legal_moves)
+
+        # Use the heuristic for outlier moves to reduce the amount of legal moves
+        legal_moves = self.find_outlier_move(game_state, legal_moves)
+
+        if self.found_taboo:
+            # If a taboo move has been found make sure it is added to the legal moves
+            legal_moves.__getitem__(self.exp_taboo.i).__getitem__(self.exp_taboo.j).add(self.exp_taboo.value)
+        # Save the matrix of legal moves for the next turn
+        self.save(legal_moves)
+        return legal_moves
+
+    def construct_legal(self, game_state):
+        """
+            Function to construct the data structure for legal moves
+        """
+        N = game_state.board.N
+        # legal_moves is a matrix with the same size as the board
+        legal_moves = []
+        # For each cell on the sudoku board create a set in the matrix
+        for i in range(N):
+            legal_moves.append([])
+            for j in range(N):
+                legal_moves.__getitem__(i).append(set())
+                if game_state.board.get(i, j) == SudokuBoard.empty:
+                    # If a cell on the board is empty fill the set with all possible legal values for this place
+                    for value in range(1, N + 1):
+                        if not TabooMove(i, j, value) in game_state.taboo_moves and self.is_legal(game_state, i, j,
+                                                                                                  value):
+                            legal_moves.__getitem__(i).__getitem__(j).add(value)
+        return legal_moves
+
+    def is_legal(self, game_state: GameState, i: int, j: int, value: int):
+        """
+            Function to check if a move is legal
+        """
+        N = game_state.board.N
+        m = game_state.board.m
+        n = game_state.board.n
+        # Check if the value already exists in the same row and/or column
+        for k in range(N):
+            if game_state.board.get(k, j) == value:
+                return False
+            if game_state.board.get(i, k) == value:
+                return False
+
+        block_row = i // m
+        block_column = j // n
+        # Check if the value already exists in the same block
+        for k in range(block_row * m, block_row * m + m):
+            for o in range(block_column * n, block_column * n + n):
+                if game_state.board.get(k, o) == value:
+                    return False
+        return True
+
+    def l2a(self, legal_moves):
+        """
+            Function to change data structure for legal moves into an array
+        """
+
+        new_legal = []
+        # Create an array where each value is a move constructed using the indices and values of the sets
+        for i in range(len(legal_moves)):
+            for j in range(len(legal_moves.__getitem__(i))):
+                if len(legal_moves.__getitem__(i).__getitem__(j)) != 0:
+                    for value in legal_moves.__getitem__(i).__getitem__(j):
+                        new_legal.append(Move(i, j, value))
+        return new_legal
+
+    def update_lm(self, game_state, legal_moves, move):
+        """
+            Function to update legal moves
+        """
+        N = game_state.board.N
+        m = game_state.board.m
+        n = game_state.board.n
+        moves = legal_moves
+        # Make sure the set for the proposed move is cleared
+        moves.__getitem__(move.i).__getitem__(move.j).clear()
+        moves.__getitem__(move.i).__getitem__(move.j).add(move.value)
+        # Remove the move.value from any set in the same row or column
+        for i in range(N):
+            if move.value in moves.__getitem__(i).__getitem__(move.j):
+                moves.__getitem__(i).__getitem__(move.j).remove(move.value)
+                if self.found_taboo is False and i != move.i:
+                    # If no taboo move has been found this is stored as a taboo move
+                    self.exp_taboo = Move(i, move.j, move.value)
+                    self.found_taboo = True
+            if move.value in moves.__getitem__(move.i).__getitem__(i):
+                moves.__getitem__(move.i).__getitem__(i).remove(move.value)
+                if self.found_taboo is False and i != move.j:
+                    # If no taboo move has been found this is stored as a taboo move
+                    self.exp_taboo = Move(move.i, i, move.value)
+                    self.found_taboo = True
+
+        block_row = move.i // m
+        block_column = move.j // n
+        # Remove the move.value from any set in the same block
+        for k in range(block_row * m, block_row * m + m):
+            for o in range(block_column * n, block_column * n + n):
+                if move.value in moves.__getitem__(k).__getitem__(o):
+                    moves.__getitem__(k).__getitem__(o).remove(move.value)
+                    if self.found_taboo is False and k != move.i and o != move.j:
+                        # If no taboo move has been found this is stored as a taboo move
+                        self.exp_taboo = Move(k, o, move.value)
+                        self.found_taboo = True
+        return moves
+
+    def find_forced_move(self, game_state, legal_moves):
+        """
+            Function to find and use forced moves
+        """
+        # Find all moves that exist as an only value in a set
         forced_moves = self.check_forced_move(legal_moves)
         old_forced_moves = []
 
         counter = 0
-        # print("start while loop")
+        # While new forced moves have still been found and the counter is not 3
         while len(forced_moves) > len(old_forced_moves) and counter < 3:
-            # print("new iteration with counter: ", counter)
-            # print("New: ", len(forced_moves), "Old: ", len(old_forced_moves), "Diff: ", len(forced_moves) - len(old_forced_moves))
+            # Update the matrix assuming each forced move will eventually be played
             for forced_move in forced_moves:
                 if forced_move not in old_forced_moves:
                     legal_moves = self.update_lm(game_state, legal_moves, forced_move)
+                    # Make sure the proposed move is still in the matrix and update old_forced_moves
                     legal_moves.__getitem__(forced_move.i).__getitem__(forced_move.j).add(forced_move.value)
                     old_forced_moves.append(forced_move)
             forced_moves = self.check_forced_move(legal_moves)
             counter += 1
-        # print("end while loop")
+        return legal_moves
+
+    def check_forced_move(self, legal_moves):
+        """
+            Function to find forced moves
+        """
+        forced_moves = []
+        # Check each set and add all values that exist in a set alone
+        for i in range(len(legal_moves)):
+            for j in range(len(legal_moves.__getitem__(i))):
+                possible = legal_moves.__getitem__(i).__getitem__(j)
+                if len(possible) == 1:
+                    value = possible.pop()
+                    possible.add(value)
+                    forced_moves.append(Move(i, j, value))
+        return forced_moves
+
+    def find_outlier_move(self, game_state, legal_moves):
+        """
+            Function to find and use outlier moves
+        """
+        N = game_state.board.N
+        m = game_state.board.m
+        n = game_state.board.n
+
         counter = 0
-        test = len(self.l2a(legal_moves))
-        # print("amount of legal moves: ", test)
-        while counter < 2 and test > (N*N*N)/10:
+        num_legal_moves = len(self.l2a(legal_moves))
+        while counter < 2 and num_legal_moves > (N*N*N)/10:
             for i in range(N):
                 row = [-1] * N
                 column = [-1] * N
                 for j in range(N):
                     for value in legal_moves.__getitem__(i).__getitem__(j):
-                        if row[value - 1] is -1:
+                        if row[value - 1] == -1:
                             row[value - 1] = j
                         else:
                             row[value - 1] = -2
                     for value in legal_moves.__getitem__(j).__getitem__(i):
-                        if column[value - 1] is -1:
+                        if column[value - 1] == -1:
                             column[value - 1] = j
                         else:
                             column[value - 1] = -2
@@ -112,7 +236,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                     for k in range(block_row * m, block_row * m + m):
                         for o in range(block_column * n, block_column * n + n):
                             for value in legal_moves.__getitem__(k).__getitem__(o):
-                                if block[value - 1] is -1:
+                                if block[value - 1] == -1:
                                     block[value - 1] = (k, o)
                                 else:
                                     block[value - 1] = -2
@@ -122,96 +246,7 @@ class SudokuAI(competitive_sudoku.sudokuai.SudokuAI):
                             legal_moves.__getitem__(block[j][0]).__getitem__(block[j][1]).add(j + 1)
 
             counter += 1
-            # test = len(self.l2a(legal_moves))
-            # print("amount of legal moves: ", test)
-
-
-        if self.found_taboo:
-            # print("taboo: ", self.exp_taboo)
-            legal_moves.__getitem__(self.exp_taboo.i).__getitem__(self.exp_taboo.j).add(self.exp_taboo.value)
-        # print(legal_moves)
-        self.save(legal_moves)
         return legal_moves
-
-    def is_legal(self, game_state: GameState, i: int, j: int, value: int):
-        N = game_state.board.N
-        m = game_state.board.m
-        n = game_state.board.n
-        for k in range(N):
-            if game_state.board.get(k, j) == value:
-                return False
-            if game_state.board.get(i, k) == value:
-                return False
-
-        block_row = i // m
-        block_column = j // n
-        for k in range(block_row * m, block_row * m + m):
-            for o in range(block_column * n, block_column * n + n):
-                if game_state.board.get(k, o) == value:
-                    return False
-        return True
-
-    def l2a(self, legal_moves):
-        """
-            Function to change data structure for legal moves
-        """
-
-        new_legal = []
-        for i in range(len(legal_moves)):
-            for j in range(len(legal_moves.__getitem__(i))):
-                if len(legal_moves.__getitem__(i).__getitem__(j)) != 0:
-                    for value in legal_moves.__getitem__(i).__getitem__(j):
-                        new_legal.append(Move(i, j, value))
-        return new_legal
-
-    def update_lm(self, game_state, legal_moves, move):
-        """
-            Function to update legal moves when going into next depth minimax
-        """
-        N = game_state.board.N
-        m = game_state.board.m
-        n = game_state.board.n
-        counter = 0
-        moves = legal_moves
-        moves.__getitem__(move.i).__getitem__(move.j).clear()
-        moves.__getitem__(move.i).__getitem__(move.j).add(move.value)
-        for i in range(N):
-            if move.value in moves.__getitem__(i).__getitem__(move.j):
-                moves.__getitem__(i).__getitem__(move.j).remove(move.value)
-                counter += 1
-                if self.found_taboo is False and i != move.i:
-                    self.exp_taboo = Move(i, move.j, move.value)
-                    self.found_taboo = True
-            if move.value in moves.__getitem__(move.i).__getitem__(i):
-                moves.__getitem__(move.i).__getitem__(i).remove(move.value)
-                counter += 1
-                if self.found_taboo is False and i != move.j:
-                    self.exp_taboo = Move(move.i, i, move.value)
-                    self.found_taboo = True
-
-        block_row = move.i // m
-        block_column = move.j // n
-        for k in range(block_row * m, block_row * m + m):
-            for o in range(block_column * n, block_column * n + n):
-                if move.value in moves.__getitem__(k).__getitem__(o):
-                    moves.__getitem__(k).__getitem__(o).remove(move.value)
-                    counter += 1
-                    if self.found_taboo is False and k != move.i and o != move.j:
-                        self.exp_taboo = Move(k, o, move.value)
-                        self.found_taboo = True
-        # print(counter)
-        return moves
-
-    def check_forced_move(self, legal_moves):
-        forced_moves = []
-        for i in range(len(legal_moves)):
-            for j in range(len(legal_moves.__getitem__(i))):
-                possible = legal_moves.__getitem__(i).__getitem__(j)
-                if len(possible) == 1:
-                    value = possible.pop()
-                    possible.add(value)
-                    forced_moves.append(Move(i, j, value))
-        return forced_moves
 
     def compute_move_score(self, board, move):
         """
